@@ -13,7 +13,6 @@ router.post('/inbound-call', async (req, res) => {
   try {
     const calledNumber = req.body.to || req.body.called_number;
 
-    // Supabase se number ka owner dhundho
     const { data: virtualNumber } = await supabase
       .from('virtual_numbers')
       .select('user_id')
@@ -24,14 +23,12 @@ router.post('/inbound-call', async (req, res) => {
       return res.status(404).json({ error: 'Number not found' });
     }
 
-    // Business info nikalo
     const { data: agent } = await supabase
       .from('agents')
       .select('*')
       .eq('user_id', virtualNumber.user_id)
       .single();
 
-    // Dynamic prompt banao
     const dynamicPrompt = `
 You are ${agent.agent_name}, AI receptionist for ${agent.business_name}.
 Business Type: ${agent.business_type}
@@ -61,7 +58,6 @@ END CALL:
 Thank you for choosing ${agent.business_name}. We look forward to serving you.
     `;
 
-    // ElevenLabs agent ko call forward karo
     const elevenLabsResponse = await axios.post(
       `https://api.elevenlabs.io/v1/convai/agents/${process.env.ELEVENLABS_AGENT_ID}/call`,
       {
@@ -79,7 +75,7 @@ Thank you for choosing ${agent.business_name}. We look forward to serving you.
     res.json({ success: true, data: elevenLabsResponse.data });
 
   } catch (error) {
-    console.error('Inbound call error:', error);
+    console.error('Inbound call error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -89,14 +85,15 @@ router.post('/buy-number', async (req, res) => {
   try {
     const { user_id } = req.body;
 
-    // Supabase se user ka area code nikalo
     const { data: user } = await supabase
       .from('users')
       .select('area_code, country')
       .eq('id', user_id)
       .single();
 
-    // Telnyx se available numbers dhundho
+    const areaCode = user?.area_code || '212';
+    const country = user?.country || 'US';
+
     const searchRes = await axios.get(
       'https://api.telnyx.com/v2/available_phone_numbers',
       {
@@ -104,18 +101,15 @@ router.post('/buy-number', async (req, res) => {
           Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
         },
         params: {
-          filter: {
-            national_destination_code: user.area_code,
-            features: ['voice'],
-            limit: 1
-          }
+          'filter[national_destination_code]': areaCode,
+          'filter[features][]': 'voice',
+          'filter[limit]': 1
         }
       }
     );
 
     const phoneNumber = searchRes.data.data[0].phone_number;
 
-    // Number kharido
     const buyRes = await axios.post(
       'https://api.telnyx.com/v2/phone_numbers',
       {
@@ -130,20 +124,19 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
-    // Supabase mein number save karo
     await supabase.from('virtual_numbers').insert({
       user_id,
       phone_number: phoneNumber,
-      country: user.country,
-      area_code: user.area_code,
+      country: country,
+      area_code: areaCode,
       telnyx_number_id: buyRes.data.data.id
     });
 
     res.json({ success: true, phone_number: phoneNumber });
 
   } catch (error) {
-    console.error('Telnyx error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Telnyx error:', error.response?.data || error.message);
+    res.status(500).json({ error: error.response?.data || error.message });
   }
 });
 
@@ -152,14 +145,12 @@ router.post('/connect-elevenlabs', async (req, res) => {
   try {
     const { user_id } = req.body;
 
-    // Number nikalo
     const { data: virtualNumber } = await supabase
       .from('virtual_numbers')
       .select('telnyx_number_id')
       .eq('user_id', user_id)
       .single();
 
-    // Telnyx number pe webhook set karo
     await axios.patch(
       `https://api.telnyx.com/v2/phone_numbers/${virtualNumber.telnyx_number_id}`,
       {
@@ -176,7 +167,7 @@ router.post('/connect-elevenlabs', async (req, res) => {
     res.json({ success: true });
 
   } catch (error) {
-    console.error('Connect error:', error);
+    console.error('Connect error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
