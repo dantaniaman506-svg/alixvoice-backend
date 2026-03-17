@@ -13,6 +13,9 @@ router.post('/create-checkout', async (req, res) => {
       elite: process.env.DODO_ELITE_PRODUCT_ID,
     };
 
+    console.log('Product ID:', productIds[plan_name]);
+    console.log('Plan name:', plan_name);
+
     const response = await axios.post(
       'https://test.dodopayments.com/subscriptions',
       {
@@ -36,8 +39,12 @@ router.post('/create-checkout', async (req, res) => {
     res.json({ checkout_url: response.data.payment_link });
 
   } catch (error) {
-    console.error('Checkout error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('Full error:', JSON.stringify(error.response?.data));
+    console.error('Status:', error.response?.status);
+    res.status(500).json({ 
+      error: error.message,
+      details: error.response?.data 
+    });
   }
 });
 
