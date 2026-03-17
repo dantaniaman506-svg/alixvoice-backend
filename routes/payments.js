@@ -14,7 +14,7 @@ router.post('/create-checkout', async (req, res) => {
     };
 
     const response = await axios.post(
-      'https://api.dodopayments.com/subscriptions',
+      'https://test.dodopayments.com/subscriptions',
       {
         billing: {
           city: "New York",
