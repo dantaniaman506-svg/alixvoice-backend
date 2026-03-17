@@ -4,7 +4,7 @@ const axios = require('axios');
 
 router.post('/create-checkout', async (req, res) => {
   try {
-    const { user_id, plan_name, plan_price } = req.body;
+    const { user_id, plan_name } = req.body;
 
     const productIds = {
       trial: process.env.DODO_TRIAL_PRODUCT_ID,
@@ -16,17 +16,6 @@ router.post('/create-checkout', async (req, res) => {
     const response = await axios.post(
       'https://test.dodopayments.com/subscriptions',
       {
-        billing: {
-          city: "New York",
-          country: "US",
-          state: "NY",
-          street: "123 Main St",
-          zipcode: "10001"
-        },
-        customer: {
-          email: "test@test.com",
-          name: "Test User"
-        },
         product_id: productIds[plan_name],
         quantity: 1,
         payment_link: true,
