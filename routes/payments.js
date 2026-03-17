@@ -1,10 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 router.post('/create-checkout', async (req, res) => {
   try {
     const { user_id, plan_name } = req.body;
+
+    // User info Supabase se nikalo
+    const { data: userData } = await supabase.auth.admin.getUserById(user_id);
+    const userEmail = userData?.user?.email || 'customer@example.com';
+    const userName = userData?.user?.user_metadata?.full_name || 'Customer';
 
     const productIds = {
       trial: process.env.DODO_TRIAL_PRODUCT_ID,
@@ -19,6 +30,10 @@ router.post('/create-checkout', async (req, res) => {
     const response = await axios.post(
       'https://test.dodopayments.com/subscriptions',
       {
+        customer: {
+          email: userEmail,
+          name: userName,
+        },
         product_id: productIds[plan_name],
         quantity: 1,
         payment_link: true,
