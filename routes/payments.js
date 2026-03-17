@@ -12,7 +12,6 @@ router.post('/create-checkout', async (req, res) => {
   try {
     const { user_id, plan_name } = req.body;
 
-    // User info Supabase se nikalo
     const { data: userData } = await supabase.auth.admin.getUserById(user_id);
     const userEmail = userData?.user?.email || 'customer@example.com';
     const userName = userData?.user?.user_metadata?.full_name || 'Customer';
@@ -24,12 +23,16 @@ router.post('/create-checkout', async (req, res) => {
       elite: process.env.DODO_ELITE_PRODUCT_ID,
     };
 
-    console.log('Product ID:', productIds[plan_name]);
-    console.log('Plan name:', plan_name);
-
     const response = await axios.post(
       'https://test.dodopayments.com/subscriptions',
       {
+        billing: {
+          city: "New York",
+          country: "US",
+          state: "NY",
+          street: "123 Main St",
+          zipcode: "10001"
+        },
         customer: {
           email: userEmail,
           name: userName,
