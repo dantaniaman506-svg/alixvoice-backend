@@ -44,7 +44,9 @@ router.post('/create-checkout', async (req, res) => {
           user_id,
           plan_name
         },
-        return_url: 'https://alixvoice-ai.vercel.app/dashboard'
+        return_url: 'https://alixvoice-ai.vercel.app/dashboard',
+        success_url: 'https://alixvoice-ai.vercel.app/dashboard',
+        cancel_url: 'https://alixvoice-ai.vercel.app/pricing-select'
       },
       {
         headers: {
