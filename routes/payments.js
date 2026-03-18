@@ -24,26 +24,27 @@ router.post('/create-checkout', async (req, res) => {
     };
 
     const response = await axios.post(
-      'https://test.dodopayments.com/checkout/sessions',
+      'https://test.dodopayments.com/subscriptions',
       {
-        product_cart: [
-          {
-            product_id: productIds[plan_name],
-            quantity: 1
-          }
-        ],
+        billing: {
+          city: "New York",
+          country: "US",
+          state: "NY",
+          street: "123 Main St",
+          zipcode: "10001"
+        },
         customer: {
           email: userEmail,
           name: userName,
         },
+        product_id: productIds[plan_name],
+        quantity: 1,
+        payment_link: true,
         metadata: {
           user_id,
           plan_name
         },
-        return_url: 'https://alixvoice-ai.vercel.app/pricing-select?payment_status=succeeded',
-        feature_flags: {
-          redirect_immediately: true
-        }
+        return_url: 'https://alixvoice-ai.vercel.app/pricing-select?payment_status=succeeded'
       },
       {
         headers: {
@@ -53,7 +54,7 @@ router.post('/create-checkout', async (req, res) => {
       }
     );
 
-    res.json({ checkout_url: response.data.checkout_url });
+    res.json({ checkout_url: response.data.payment_link });
 
   } catch (error) {
     console.error('Full error:', JSON.stringify(error.response?.data));
