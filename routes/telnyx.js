@@ -94,6 +94,7 @@ router.post('/buy-number', async (req, res) => {
     const areaCode = user?.area_code || '212';
     const country = user?.country || 'US';
 
+    // Available numbers search karo
     const searchRes = await axios.get(
       'https://api.telnyx.com/v2/available_phone_numbers',
       {
@@ -108,8 +109,34 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
-    const phoneNumber = searchRes.data.data[0].phone_number;
+    if (!searchRes.data.data || searchRes.data.data.length === 0) {
+      // Area code pe number nahi mila — default 212 try karo
+      const defaultSearch = await axios.get(
+        'https://api.telnyx.com/v2/available_phone_numbers',
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
+          },
+          params: {
+            'filter[national_destination_code]': '212',
+            'filter[features][]': 'voice',
+            'filter[limit]': 1
+          }
+        }
+      );
+      
+      if (!defaultSearch.data.data || defaultSearch.data.data.length === 0) {
+        return res.status(404).json({ error: 'No numbers available' });
+      }
+      
+      var phoneNumber = defaultSearch.data.data[0].phone_number;
+    } else {
+      var phoneNumber = searchRes.data.data[0].phone_number;
+    }
 
+    console.log('Buying number:', phoneNumber);
+
+    // Number kharido
     const buyRes = await axios.post(
       'https://api.telnyx.com/v2/phone_numbers',
       {
@@ -124,6 +151,9 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
+    console.log('Number bought:', buyRes.data.data.id);
+
+    // Supabase mein save karo
     await supabase.from('virtual_numbers').insert({
       user_id,
       phone_number: phoneNumber,
@@ -135,7 +165,7 @@ router.post('/buy-number', async (req, res) => {
     res.json({ success: true, phone_number: phoneNumber });
 
   } catch (error) {
-    console.error('Telnyx error:', error.response?.data || error.message);
+    console.error('Telnyx full error:', JSON.stringify(error.response?.data));
     res.status(500).json({ error: error.response?.data || error.message });
   }
 });
