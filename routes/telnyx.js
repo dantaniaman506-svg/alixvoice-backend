@@ -94,44 +94,56 @@ router.post('/buy-number', async (req, res) => {
     const areaCode = user?.area_code || '212';
     const country = user?.country || 'US';
 
-    // Available numbers search karo
-    const searchRes = await axios.get(
-      'https://api.telnyx.com/v2/available_phone_numbers',
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
-        },
-        params: {
-          'filter[national_destination_code]': areaCode,
-          'filter[features][]': 'voice',
-          'filter[limit]': 1
-        }
-      }
-    );
+    let phoneNumber = null;
 
-    if (!searchRes.data.data || searchRes.data.data.length === 0) {
-      // Area code pe number nahi mila — default 212 try karo
-      const defaultSearch = await axios.get(
+    // Pehle user ke area code se try karo
+    try {
+      const searchRes = await axios.get(
         'https://api.telnyx.com/v2/available_phone_numbers',
         {
           headers: {
             Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
           },
           params: {
-            'filter[national_destination_code]': '212',
+            'filter[country_code]': 'US',
+            'filter[national_destination_code]': areaCode,
             'filter[features][]': 'voice',
             'filter[limit]': 1
           }
         }
       );
-      
-      if (!defaultSearch.data.data || defaultSearch.data.data.length === 0) {
-        return res.status(404).json({ error: 'No numbers available' });
+      if (searchRes.data.data?.length > 0) {
+        phoneNumber = searchRes.data.data[0].phone_number;
+        console.log('Found number for area code:', areaCode);
       }
-      
-      var phoneNumber = defaultSearch.data.data[0].phone_number;
-    } else {
-      var phoneNumber = searchRes.data.data[0].phone_number;
+    } catch (e) {
+      console.log('Area code search failed');
+    }
+
+    // Agar nahi mila toh koi bhi US number lo
+    if (!phoneNumber) {
+      console.log('Trying any US number...');
+      const anySearch = await axios.get(
+        'https://api.telnyx.com/v2/available_phone_numbers',
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
+          },
+          params: {
+            'filter[country_code]': 'US',
+            'filter[features][]': 'voice',
+            'filter[limit]': 1
+          }
+        }
+      );
+      if (anySearch.data.data?.length > 0) {
+        phoneNumber = anySearch.data.data[0].phone_number;
+        console.log('Found any US number:', phoneNumber);
+      }
+    }
+
+    if (!phoneNumber) {
+      return res.status(404).json({ error: 'No numbers available' });
     }
 
     console.log('Buying number:', phoneNumber);
@@ -151,9 +163,8 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
-    console.log('Number bought:', buyRes.data.data.id);
+    console.log('Number bought successfully:', phoneNumber);
 
-    // Supabase mein save karo
     await supabase.from('virtual_numbers').insert({
       user_id,
       phone_number: phoneNumber,
