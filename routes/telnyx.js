@@ -148,11 +148,13 @@ router.post('/buy-number', async (req, res) => {
 
     console.log('Buying number:', phoneNumber);
 
-    // Number kharido
+    // Number kharido - sahi endpoint
     const buyRes = await axios.post(
-      'https://api.telnyx.com/v2/phone_numbers',
+      'https://api.telnyx.com/v2/phone_numbers/orders',
       {
-        phone_number: phoneNumber,
+        phone_numbers: [
+          { phone_number: phoneNumber }
+        ],
         connection_id: process.env.TELNYX_CONNECTION_ID
       },
       {
@@ -163,6 +165,9 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
+    const boughtNumber = buyRes.data.data?.phone_numbers?.[0];
+    const telnyxNumberId = boughtNumber?.id || buyRes.data.data?.id;
+
     console.log('Number bought successfully:', phoneNumber);
 
     await supabase.from('virtual_numbers').insert({
@@ -170,7 +175,7 @@ router.post('/buy-number', async (req, res) => {
       phone_number: phoneNumber,
       country: country,
       area_code: areaCode,
-      telnyx_number_id: buyRes.data.data.id
+      telnyx_number_id: telnyxNumberId
     });
 
     res.json({ success: true, phone_number: phoneNumber });
