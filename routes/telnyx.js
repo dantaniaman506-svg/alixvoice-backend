@@ -8,7 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Jab koi client ke number pe call aaye
 router.post('/inbound-call', async (req, res) => {
   try {
     const calledNumber = req.body.to || req.body.called_number;
@@ -80,7 +79,6 @@ Thank you for choosing ${agent.business_name}. We look forward to serving you.
   }
 });
 
-// Client ke liye number kharidna
 router.post('/buy-number', async (req, res) => {
   try {
     const { user_id } = req.body;
@@ -96,14 +94,11 @@ router.post('/buy-number', async (req, res) => {
 
     let phoneNumber = null;
 
-    // Pehle user ke area code se try karo
     try {
       const searchRes = await axios.get(
         'https://api.telnyx.com/v2/available_phone_numbers',
         {
-          headers: {
-            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
-          },
+          headers: { Authorization: `Bearer ${process.env.TELNYX_API_KEY}` },
           params: {
             'filter[country_code]': 'US',
             'filter[national_destination_code]': areaCode,
@@ -120,15 +115,11 @@ router.post('/buy-number', async (req, res) => {
       console.log('Area code search failed');
     }
 
-    // Agar nahi mila toh koi bhi US number lo
     if (!phoneNumber) {
-      console.log('Trying any US number...');
       const anySearch = await axios.get(
         'https://api.telnyx.com/v2/available_phone_numbers',
         {
-          headers: {
-            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`
-          },
+          headers: { Authorization: `Bearer ${process.env.TELNYX_API_KEY}` },
           params: {
             'filter[country_code]': 'US',
             'filter[features][]': 'voice',
@@ -148,14 +139,13 @@ router.post('/buy-number', async (req, res) => {
 
     console.log('Buying number:', phoneNumber);
 
-    // Number kharido - sahi endpoint
+    // Seedha number buy karo
     const buyRes = await axios.post(
-      'https://api.telnyx.com/v2/phone_numbers/orders',
+      `https://api.telnyx.com/v2/phone_numbers`,
       {
-        phone_numbers: [
-          { phone_number: phoneNumber }
-        ],
-        connection_id: process.env.TELNYX_CONNECTION_ID
+        phone_number: phoneNumber,
+        connection_id: process.env.TELNYX_CONNECTION_ID,
+        messaging_profile_id: null
       },
       {
         headers: {
@@ -165,10 +155,8 @@ router.post('/buy-number', async (req, res) => {
       }
     );
 
-    const boughtNumber = buyRes.data.data?.phone_numbers?.[0];
-    const telnyxNumberId = boughtNumber?.id || buyRes.data.data?.id;
-
-    console.log('Number bought successfully:', phoneNumber);
+    const telnyxNumberId = buyRes.data.data?.id;
+    console.log('Number bought successfully:', phoneNumber, telnyxNumberId);
 
     await supabase.from('virtual_numbers').insert({
       user_id,
@@ -186,7 +174,6 @@ router.post('/buy-number', async (req, res) => {
   }
 });
 
-// ElevenLabs se connect karo
 router.post('/connect-elevenlabs', async (req, res) => {
   try {
     const { user_id } = req.body;
@@ -199,9 +186,7 @@ router.post('/connect-elevenlabs', async (req, res) => {
 
     await axios.patch(
       `https://api.telnyx.com/v2/phone_numbers/${virtualNumber.telnyx_number_id}`,
-      {
-        connection_id: process.env.TELNYX_CONNECTION_ID
-      },
+      { connection_id: process.env.TELNYX_CONNECTION_ID },
       {
         headers: {
           Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
